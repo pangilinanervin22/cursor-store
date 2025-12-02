@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { updateBook, type Book, type UpdateBookInput } from "@/app/actions";
+import { deleteUploadthingImage } from "@/app/actions/uploadthing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,6 @@ import {
   User,
   Hash,
   Tag,
-  DollarSign,
   Package,
   Upload,
   AlertTriangle,
@@ -59,6 +59,8 @@ export function EditBookDialog({ book, trigger }: EditBookDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [imageUrl, setImageUrl] = React.useState<string | null>(book.imgUrl);
+  const [originalImageUrl] = React.useState<string | null>(book.imgUrl);
+  const [imagesToDelete, setImagesToDelete] = React.useState<string[]>([]);
   const [stock, setStock] = React.useState(book.stock);
   const formRef = React.useRef<HTMLFormElement>(null);
 
@@ -68,8 +70,25 @@ export function EditBookDialog({ book, trigger }: EditBookDialogProps) {
       setImageUrl(book.imgUrl);
       setStock(book.stock);
       setError(null);
+      setImagesToDelete([]);
     }
   }, [open, book.imgUrl, book.stock]);
+
+  // Handle image removal - queue for deletion
+  const handleRemoveImage = () => {
+    if (imageUrl) {
+      setImagesToDelete((prev) => [...prev, imageUrl]);
+    }
+    setImageUrl(null);
+  };
+
+  // Handle new image upload - queue old one for deletion
+  const handleImageUpload = (url: string) => {
+    if (imageUrl && imageUrl !== url) {
+      setImagesToDelete((prev) => [...prev, imageUrl]);
+    }
+    setImageUrl(url);
+  };
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -90,6 +109,13 @@ export function EditBookDialog({ book, trigger }: EditBookDialogProps) {
     const result = await updateBook(book.id, data);
 
     if (result.success) {
+      // Delete queued images from Uploadthing
+      for (const urlToDelete of imagesToDelete) {
+        // Don't delete if it's the current image (user might have re-added it)
+        if (urlToDelete !== imageUrl) {
+          await deleteUploadthingImage(urlToDelete);
+        }
+      }
       setOpen(false);
     } else {
       setError(result.error || "Failed to update book");
@@ -160,7 +186,7 @@ export function EditBookDialog({ book, trigger }: EditBookDialogProps) {
                     />
                     <button
                       type="button"
-                      onClick={() => setImageUrl(null)}
+                      onClick={handleRemoveImage}
                       className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 shadow-md transition-transform hover:scale-110"
                     >
                       <X className="h-4 w-4" />
@@ -178,7 +204,7 @@ export function EditBookDialog({ book, trigger }: EditBookDialogProps) {
                   endpoint="bookImageUploader"
                   onClientUploadComplete={(res) => {
                     if (res?.[0]?.url) {
-                      setImageUrl(res[0].url);
+                      handleImageUpload(res[0].url);
                     }
                   }}
                   onUploadError={(error: Error) => {
@@ -288,12 +314,11 @@ export function EditBookDialog({ book, trigger }: EditBookDialogProps) {
               {/* Price */}
               <div className="space-y-2">
                 <Label htmlFor="edit-price" className="flex items-center gap-2 text-sm">
-                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                  Price (USD)
+                  Price (PHP)
                 </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    $
+                    ₱
                   </span>
                   <Input
                     id="edit-price"

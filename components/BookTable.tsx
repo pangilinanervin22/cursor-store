@@ -11,16 +11,106 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 import { EditBookDialog } from "@/components/EditBookDialog";
 import { DeleteBookDialog } from "@/components/DeleteBookDialog";
 import { formatCurrency } from "@/lib/utils";
-import { ImageOff } from "lucide-react";
+import { ImageOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+
+type SortField = "title" | "author" | "price" | "stock" | "genre" | "createdAt";
+type SortDirection = "asc" | "desc";
 
 interface BookTableProps {
   books: Book[];
+  itemsPerPage?: number;
 }
 
-export function BookTable({ books }: BookTableProps) {
+export function BookTable({ books, itemsPerPage = 10 }: BookTableProps) {
+  const [sortField, setSortField] = React.useState<SortField>("createdAt");
+  const [sortDirection, setSortDirection] = React.useState<SortDirection>("desc");
+
+  // Sort books
+  const sortedBooks = React.useMemo(() => {
+    return [...books].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case "title":
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case "author":
+          comparison = a.author.localeCompare(b.author);
+          break;
+        case "price":
+          comparison = a.price - b.price;
+          break;
+        case "stock":
+          comparison = a.stock - b.stock;
+          break;
+        case "genre":
+          comparison = a.genre.localeCompare(b.genre);
+          break;
+        case "createdAt":
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [books, sortField, sortDirection]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems,
+    totalItems,
+  } = usePagination(sortedBooks, itemsPerPage);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/50" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="h-3.5 w-3.5 text-primary" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5 text-primary" />
+    );
+  };
+
+  const SortableHeader = ({
+    field,
+    children,
+    className = "",
+  }: {
+    field: SortField;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <TableHead className={className}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-3 h-8 hover:bg-transparent"
+        onClick={() => handleSort(field)}
+      >
+        {children}
+        <SortIcon field={field} />
+      </Button>
+    </TableHead>
+  );
+
   if (books.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -53,17 +143,23 @@ export function BookTable({ books }: BookTableProps) {
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="w-[80px]">Cover</TableHead>
-            <TableHead className="w-[200px]">Title</TableHead>
-            <TableHead>Author</TableHead>
+            <SortableHeader field="title" className="w-[200px]">
+              Title
+            </SortableHeader>
+            <SortableHeader field="author">Author</SortableHeader>
             <TableHead>ISBN</TableHead>
-            <TableHead>Genre</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-center">Stock</TableHead>
+            <SortableHeader field="genre">Genre</SortableHeader>
+            <SortableHeader field="price" className="text-right">
+              Price
+            </SortableHeader>
+            <SortableHeader field="stock" className="text-center">
+              Stock
+            </SortableHeader>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {books.map((book) => {
+          {paginatedItems.map((book) => {
             const isLowStock = book.stock < 5;
 
             return (
@@ -123,6 +219,17 @@ export function BookTable({ books }: BookTableProps) {
           })}
         </TableBody>
       </Table>
+
+      {/* Pagination */}
+      <div className="border-t border-border">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+        />
+      </div>
     </div>
   );
 }

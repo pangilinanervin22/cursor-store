@@ -59,23 +59,37 @@
   }
 }
 
-/* Custom scrollbar for dark mode */
+/* Custom scrollbar for dark mode - applies to all elements */
+.dark *::-webkit-scrollbar,
 .dark::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
+.dark *::-webkit-scrollbar-track,
 .dark::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  background: hsl(240 10% 8%);
   border-radius: 4px;
 }
 
+.dark *::-webkit-scrollbar-thumb,
 .dark::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
+  background: hsl(240 5% 26%);
   border-radius: 4px;
 }
 
+.dark *::-webkit-scrollbar-thumb:hover,
 .dark::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(240 5% 35%);
 }
 
+.dark *::-webkit-scrollbar-corner,
+.dark::-webkit-scrollbar-corner {
+  background: hsl(240 10% 8%);
+}
+
+/* Firefox scrollbar */
+.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(240 5% 26%) hsl(240 10% 8%);
+}

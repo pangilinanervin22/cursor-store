@@ -41,6 +41,7 @@ export interface ActionResult<T = void> {
   success: boolean;
   data?: T;
   error?: string;
+  salesCount?: number;
 }
 
 // Validation helpers
@@ -202,7 +203,18 @@ export async function updateStock(
 }
 
 /**
+ * Checks if a book has associated sales
+ */
+export async function checkBookSales(bookId: string): Promise<{ hasSales: boolean; salesCount: number }> {
+  const salesCount = await prisma.saleItem.count({
+    where: { bookId },
+  });
+  return { hasSales: salesCount > 0, salesCount };
+}
+
+/**
  * Deletes a book from the inventory
+ * Will fail if the book has associated sales records
  */
 export async function deleteBook(id: string): Promise<ActionResult> {
   if (!id || id.trim().length === 0) {
@@ -210,6 +222,19 @@ export async function deleteBook(id: string): Promise<ActionResult> {
   }
 
   try {
+    // Check if book has any sales records
+    const salesCount = await prisma.saleItem.count({
+      where: { bookId: id },
+    });
+
+    if (salesCount > 0) {
+      return {
+        success: false,
+        error: `Cannot delete this book because it has ${salesCount} sale record(s). Please delete the associated sales from the Sales History first.`,
+        salesCount,
+      };
+    }
+
     await prisma.book.delete({
       where: { id },
     });
@@ -219,6 +244,70 @@ export async function deleteBook(id: string): Promise<ActionResult> {
   } catch (error) {
     console.error("Error deleting book:", error);
     return { success: false, error: "Failed to delete book" };
+  }
+}
+
+/**
+ * Force deletes a book and all associated sales records
+ * Use with caution - this will delete sales history
+ */
+export async function forceDeleteBook(id: string): Promise<ActionResult> {
+  if (!id || id.trim().length === 0) {
+    return { success: false, error: "Book ID is required" };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Get all sales that contain this book
+      const saleItems = await tx.saleItem.findMany({
+        where: { bookId: id },
+        select: { saleId: true, quantity: true, priceAtSale: true },
+      });
+
+      // Group by saleId
+      const salesAffected = new Set(saleItems.map((item) => item.saleId));
+
+      // Delete all sale items for this book
+      await tx.saleItem.deleteMany({
+        where: { bookId: id },
+      });
+
+      // For each affected sale, recalculate total or delete if empty
+      for (const saleId of salesAffected) {
+        const remainingItems = await tx.saleItem.findMany({
+          where: { saleId },
+        });
+
+        if (remainingItems.length === 0) {
+          // Delete the sale if no items remain
+          await tx.sale.delete({
+            where: { id: saleId },
+          });
+        } else {
+          // Recalculate total
+          const newTotal = remainingItems.reduce(
+            (sum, item) => sum + item.priceAtSale * item.quantity,
+            0
+          );
+          await tx.sale.update({
+            where: { id: saleId },
+            data: { totalAmount: newTotal },
+          });
+        }
+      }
+
+      // Now delete the book
+      await tx.book.delete({
+        where: { id },
+      });
+    });
+
+    revalidatePath("/");
+    revalidatePath("/sales");
+    return { success: true };
+  } catch (error) {
+    console.error("Error force deleting book:", error);
+    return { success: false, error: "Failed to delete book and associated records" };
   }
 }
 

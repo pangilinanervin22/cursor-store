@@ -215,7 +215,7 @@ export function CartPanel({
             <span>{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Tax (12%)</span>
+            <span className="text-muted-foreground">VAT (12%)</span>
             <span>{formatCurrency(tax)}</span>
           </div>
           <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
@@ -240,7 +240,7 @@ export function CartPanel({
             <label className="text-sm font-medium">Cash Received</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                $
+                ₱
               </span>
               <Input
                 type="number"
@@ -272,7 +272,7 @@ export function CartPanel({
                   change >= 0 ? "text-emerald-500" : "text-destructive"
                 }`}
               >
-                {cashAmount > 0 ? formatCurrency(Math.max(0, change)) : "$0.00"}
+                {cashAmount > 0 ? formatCurrency(Math.max(0, change)) : "₱0.00"}
               </span>
             </div>
             {cashAmount > 0 && change < 0 && (
@@ -308,4 +308,3 @@ export function CartPanel({
     </div>
   );
 }
-

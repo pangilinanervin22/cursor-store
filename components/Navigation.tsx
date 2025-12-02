@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, ShoppingCart, LayoutDashboard } from "lucide-react";
+import { logout } from "@/app/actions/auth";
+import { BookOpen, ShoppingCart, LayoutDashboard, Receipt, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   {
@@ -16,10 +18,23 @@ const navItems = [
     label: "Point of Sale",
     icon: ShoppingCart,
   },
+  {
+    href: "/sales",
+    label: "Sales History",
+    icon: Receipt,
+  },
 ];
 
-export function Navigation() {
+interface NavigationProps {
+  username?: string;
+}
+
+export function Navigation({ username }: NavigationProps) {
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <header className="border-b border-border bg-card sticky top-0 z-50">
@@ -61,9 +76,27 @@ export function Navigation() {
               );
             })}
           </nav>
+
+          {/* User Menu */}
+          <div className="flex items-center gap-3">
+            {username && (
+              <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>{username}</span>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
+          </div>
         </div>
       </div>
     </header>
   );
 }
-

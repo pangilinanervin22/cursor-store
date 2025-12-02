@@ -1,13 +1,16 @@
 import { getBooks, getInventoryStats } from "@/app/actions";
+import { getCurrentUser } from "@/app/actions/auth";
 import { AddBookForm } from "@/components/AddBookForm";
 import { BookTable } from "@/components/BookTable";
 import { StatsCards } from "@/components/StatsCards";
 import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
 
 export default async function DashboardPage() {
-  const [booksResult, statsResult] = await Promise.all([
+  const [booksResult, statsResult, user] = await Promise.all([
     getBooks(),
     getInventoryStats(),
+    getCurrentUser(),
   ]);
 
   const books = booksResult.success ? booksResult.data ?? [] : [];
@@ -18,7 +21,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <Navigation />
+      <Navigation username={user?.username} />
 
       {/* Sub Header */}
       <div className="border-b border-border bg-card/50">
@@ -63,13 +66,7 @@ export default async function DashboardPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-card mt-auto">
-        <div className="container mx-auto px-4 py-4">
-          <p className="text-center text-sm text-muted-foreground">
-            BookStore Inventory System &copy; {new Date().getFullYear()}
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
