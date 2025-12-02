@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions/auth";
-import { BookOpen, ShoppingCart, LayoutDashboard, Receipt, LogOut, User } from "lucide-react";
+import { ShoppingCart, LayoutDashboard, Receipt, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 
 const navItems = [
   {
@@ -41,18 +42,8 @@ export function Navigation({ username }: NavigationProps) {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-bold tracking-tight leading-tight">
-                BookStore
-              </h1>
-              <p className="text-xs text-muted-foreground leading-tight">
-                Manager
-              </p>
-            </div>
+          <Link href="/" className="flex items-center">
+            <Logo size="md" />
           </Link>
 
           {/* Navigation Links */}

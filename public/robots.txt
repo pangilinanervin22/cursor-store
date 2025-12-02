@@ -1,0 +1,12 @@
+# Robots.txt for BookStore Manager
+
+User-agent: *
+Allow: /
+
+# Disallow admin/auth routes from indexing
+Disallow: /login
+Disallow: /api/
+
+# Sitemap
+Sitemap: /sitemap.xml
+

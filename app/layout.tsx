@@ -5,8 +5,21 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "BookStore Manager | Inventory System",
-  description: "A modern bookstore inventory management system",
+  title: "BookStore Manager | Inventory & POS System",
+  description: "A modern bookstore inventory management and point-of-sale system",
+  keywords: ["bookstore", "inventory", "pos", "sales", "management"],
+  authors: [{ name: "BookStore Manager" }],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/logo.svg",
+  },
+  openGraph: {
+    title: "BookStore Manager",
+    description: "A modern bookstore inventory management and point-of-sale system",
+    type: "website",
+    images: ["/og-image.svg"],
+  },
 };
 
 export default function RootLayout({
