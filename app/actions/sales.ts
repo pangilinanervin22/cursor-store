@@ -3,6 +3,19 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+// Logger helper
+function log(action: string, message: string, data?: Record<string, unknown>) {
+  const timestamp = new Date().toISOString();
+  const dataStr = data ? ` | ${JSON.stringify(data)}` : "";
+  console.log(`[${timestamp}] [ACTION: ${action}] ${message}${dataStr}`);
+}
+
+function logError(action: string, message: string, error: unknown) {
+  const timestamp = new Date().toISOString();
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  console.error(`[${timestamp}] [ACTION: ${action}] ERROR: ${message} | ${errorMsg}`);
+}
+
 // Types
 export interface SaleWithItems {
   id: string;
@@ -45,6 +58,9 @@ export interface SalesStats {
  * Fetches all sales with their items ordered by creation date (newest first)
  */
 export async function getSales(): Promise<ActionResult<SaleWithItems[]>> {
+  const ACTION = "getSales";
+  log(ACTION, "Fetching all sales...");
+  
   try {
     const sales = await prisma.sale.findMany({
       orderBy: {
@@ -66,9 +82,11 @@ export async function getSales(): Promise<ActionResult<SaleWithItems[]>> {
         },
       },
     });
+    
+    log(ACTION, "Sales fetched successfully", { count: sales.length });
     return { success: true, data: sales };
   } catch (error) {
-    console.error("Error fetching sales:", error);
+    logError(ACTION, "Failed to fetch sales", error);
     return { success: false, error: "Failed to fetch sales" };
   }
 }
@@ -77,6 +95,9 @@ export async function getSales(): Promise<ActionResult<SaleWithItems[]>> {
  * Fetches a single sale by ID
  */
 export async function getSaleById(id: string): Promise<ActionResult<SaleWithItems>> {
+  const ACTION = "getSaleById";
+  log(ACTION, "Fetching sale by ID...", { saleId: id });
+  
   try {
     const sale = await prisma.sale.findUnique({
       where: { id },
@@ -98,12 +119,14 @@ export async function getSaleById(id: string): Promise<ActionResult<SaleWithItem
     });
 
     if (!sale) {
+      log(ACTION, "Sale not found", { saleId: id });
       return { success: false, error: "Sale not found" };
     }
 
+    log(ACTION, "Sale fetched successfully", { saleId: id, itemCount: sale.items.length });
     return { success: true, data: sale };
   } catch (error) {
-    console.error("Error fetching sale:", error);
+    logError(ACTION, "Failed to fetch sale", error);
     return { success: false, error: "Failed to fetch sale" };
   }
 }
@@ -116,7 +139,11 @@ export async function updateSaleItem(
   saleItemId: string,
   newQuantity: number
 ): Promise<ActionResult<SaleWithItems>> {
+  const ACTION = "updateSaleItem";
+  log(ACTION, "Updating sale item...", { saleItemId, newQuantity });
+  
   if (newQuantity < 1) {
+    log(ACTION, "Invalid quantity", { newQuantity });
     return { success: false, error: "Quantity must be at least 1" };
   }
 
@@ -129,10 +156,12 @@ export async function updateSaleItem(
       });
 
       if (!saleItem) {
+        log(ACTION, "Sale item not found", { saleItemId });
         throw new Error("Sale item not found");
       }
 
       const quantityDiff = newQuantity - saleItem.quantity;
+      log(ACTION, "Quantity difference calculated", { oldQty: saleItem.quantity, newQty: newQuantity, diff: quantityDiff });
 
       // Check if we have enough stock (if increasing quantity)
       if (quantityDiff > 0) {
@@ -141,6 +170,7 @@ export async function updateSaleItem(
         });
 
         if (!book || book.stock < quantityDiff) {
+          log(ACTION, "Insufficient stock for update", { bookId: saleItem.bookId, available: book?.stock, needed: quantityDiff });
           throw new Error("Insufficient stock to increase quantity");
         }
       }
@@ -150,6 +180,7 @@ export async function updateSaleItem(
         where: { id: saleItem.bookId },
         data: { stock: { decrement: quantityDiff } },
       });
+      log(ACTION, "Stock adjusted", { bookId: saleItem.bookId, adjustment: -quantityDiff });
 
       // Update the sale item
       await tx.saleItem.update({
@@ -190,14 +221,16 @@ export async function updateSaleItem(
         },
       });
 
+      log(ACTION, "Sale total recalculated", { saleId: saleItem.saleId, newTotal });
       return updatedSale;
     });
 
     revalidatePath("/sales");
     revalidatePath("/");
+    log(ACTION, "Sale item updated successfully", { saleItemId, newQuantity });
     return { success: true, data: result };
   } catch (error) {
-    console.error("Error updating sale item:", error);
+    logError(ACTION, "Failed to update sale item", error);
     const message = error instanceof Error ? error.message : "Failed to update sale item";
     return { success: false, error: message };
   }
@@ -208,6 +241,9 @@ export async function updateSaleItem(
  * Returns stock to inventory
  */
 export async function removeSaleItem(saleItemId: string): Promise<ActionResult<SaleWithItems | null>> {
+  const ACTION = "removeSaleItem";
+  log(ACTION, "Removing sale item...", { saleItemId });
+  
   try {
     const result = await prisma.$transaction(async (tx) => {
       // Get the sale item
@@ -217,14 +253,18 @@ export async function removeSaleItem(saleItemId: string): Promise<ActionResult<S
       });
 
       if (!saleItem) {
+        log(ACTION, "Sale item not found", { saleItemId });
         throw new Error("Sale item not found");
       }
+
+      log(ACTION, "Found sale item", { saleId: saleItem.saleId, bookId: saleItem.bookId, quantity: saleItem.quantity });
 
       // Return stock to inventory
       await tx.book.update({
         where: { id: saleItem.bookId },
         data: { stock: { increment: saleItem.quantity } },
       });
+      log(ACTION, "Stock returned to inventory", { bookId: saleItem.bookId, quantity: saleItem.quantity });
 
       // Delete the sale item
       await tx.saleItem.delete({
@@ -241,6 +281,7 @@ export async function removeSaleItem(saleItemId: string): Promise<ActionResult<S
         await tx.sale.delete({
           where: { id: saleItem.saleId },
         });
+        log(ACTION, "Sale deleted (no items remaining)", { saleId: saleItem.saleId });
         return null;
       }
 
@@ -271,14 +312,16 @@ export async function removeSaleItem(saleItemId: string): Promise<ActionResult<S
         },
       });
 
+      log(ACTION, "Sale total recalculated", { saleId: saleItem.saleId, newTotal, remainingItems: remainingItems.length });
       return updatedSale;
     });
 
     revalidatePath("/sales");
     revalidatePath("/");
+    log(ACTION, "Sale item removed successfully", { saleItemId });
     return { success: true, data: result };
   } catch (error) {
-    console.error("Error removing sale item:", error);
+    logError(ACTION, "Failed to remove sale item", error);
     const message = error instanceof Error ? error.message : "Failed to remove sale item";
     return { success: false, error: message };
   }
@@ -288,6 +331,9 @@ export async function removeSaleItem(saleItemId: string): Promise<ActionResult<S
  * Deletes an entire sale and returns all items to stock
  */
 export async function deleteSale(saleId: string): Promise<ActionResult> {
+  const ACTION = "deleteSale";
+  log(ACTION, "Deleting sale...", { saleId });
+  
   try {
     await prisma.$transaction(async (tx) => {
       // Get all sale items
@@ -295,12 +341,15 @@ export async function deleteSale(saleId: string): Promise<ActionResult> {
         where: { saleId },
       });
 
+      log(ACTION, "Found sale items to process", { saleId, itemCount: saleItems.length });
+
       // Return stock for each item
       for (const item of saleItems) {
         await tx.book.update({
           where: { id: item.bookId },
           data: { stock: { increment: item.quantity } },
         });
+        log(ACTION, "Stock returned", { bookId: item.bookId, quantity: item.quantity });
       }
 
       // Delete the sale (cascades to items)
@@ -311,9 +360,10 @@ export async function deleteSale(saleId: string): Promise<ActionResult> {
 
     revalidatePath("/sales");
     revalidatePath("/");
+    log(ACTION, "Sale deleted successfully", { saleId });
     return { success: true };
   } catch (error) {
-    console.error("Error deleting sale:", error);
+    logError(ACTION, "Failed to delete sale", error);
     return { success: false, error: "Failed to delete sale" };
   }
 }
@@ -322,6 +372,9 @@ export async function deleteSale(saleId: string): Promise<ActionResult> {
  * Gets sales statistics
  */
 export async function getSalesStats(): Promise<ActionResult<SalesStats>> {
+  const ACTION = "getSalesStats";
+  log(ACTION, "Fetching sales statistics...");
+  
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -354,6 +407,7 @@ export async function getSalesStats(): Promise<ActionResult<SalesStats>> {
     const todaySales = todaySalesData.length;
     const todayRevenue = todaySalesData.reduce((sum, sale) => sum + sale.totalAmount, 0);
 
+    log(ACTION, "Sales stats fetched successfully", { totalSales, totalRevenue, totalItemsSold, todaySales, todayRevenue });
     return {
       success: true,
       data: {
@@ -365,8 +419,7 @@ export async function getSalesStats(): Promise<ActionResult<SalesStats>> {
       },
     };
   } catch (error) {
-    console.error("Error fetching sales stats:", error);
+    logError(ACTION, "Failed to fetch sales stats", error);
     return { success: false, error: "Failed to fetch sales statistics" };
   }
 }
-
