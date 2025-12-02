@@ -39,11 +39,11 @@ export function ProductGrid({
   const [localSearch, setLocalSearch] = React.useState(searchQuery);
   const [sortField, setSortField] = React.useState<SortField>("title");
   const [sortDirection, setSortDirection] = React.useState<SortDirection>("asc");
-  const searchTimeout = React.useRef<NodeJS.Timeout>();
+  const searchTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleSearchChange = (value: string) => {
     setLocalSearch(value);
-    clearTimeout(searchTimeout.current);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
       onSearch(value);
     }, 300);
