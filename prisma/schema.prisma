@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Book {
+  id        String     @id @default(uuid())
+  title     String
+  author    String
+  isbn      String     @unique
+  price     Float
+  stock     Int        @default(0)
+  genre     String
+  imgUrl    String?    @map("img_url")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  saleItems SaleItem[]
+
+  @@index([isbn])
+  @@index([genre])
+  @@index([author])
+}
+
+model Sale {
+  id            String     @id @default(uuid())
+  totalAmount   Float
+  paymentMethod String     @default("CASH") @map("payment_method")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  items         SaleItem[]
+
+  @@index([createdAt])
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String @id @default(uuid())
+  saleId      String @map("sale_id")
+  bookId      String @map("book_id")
+  quantity    Int
+  priceAtSale Float  @map("price_at_sale")
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([bookId])
+  @@map("sale_items")
+}
