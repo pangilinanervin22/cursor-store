@@ -265,7 +265,7 @@ export async function forceDeleteBook(id: string): Promise<ActionResult> {
       });
 
       // Group by saleId
-      const salesAffected = new Set(saleItems.map((item) => item.saleId));
+      const salesAffected = Array.from(new Set(saleItems.map((item) => item.saleId)));
 
       // Delete all sale items for this book
       await tx.saleItem.deleteMany({
