@@ -1,5 +1,4 @@
 # 📚 BookStore Inventory & POS System
-
 A modern, full-featured bookstore management system built with Next.js 14, TypeScript, PostgreSQL, and Tailwind CSS. Features complete inventory management, point-of-sale, and sales tracking.
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
@@ -289,3 +288,4 @@ MIT
 ---
 
 Built with ❤️ using Next.js and TypeScript
+
