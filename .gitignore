@@ -26,6 +26,10 @@ yarn-error.log*
 # Local env files
 .env*.local
 .env
+.env.docker
+
+# Production env (for reference only, use Key Vault in production)
+# .env.production
 
 # Vercel
 .vercel
