@@ -1,0 +1,49 @@
+name: Trigger auto deployment for book-store-frontend
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/book-store-frontend-AutoDeployTrigger-7376d9fa-5a2c-4f43-9794-2aee96c96d17.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.BOOKSTOREFRONTEND_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.BOOKSTOREFRONTEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.BOOKSTOREFRONTEND_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          _targetLabelKey_: _targetLabel_
+          registryUrl: bookstorecontainer.azurecr.io
+          registryUsername: ${{ secrets.BOOKSTOREFRONTEND_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.BOOKSTOREFRONTEND_REGISTRY_PASSWORD }}
+          containerAppName: book-store-frontend
+          resourceGroup: example-store
+          imageToBuild: bookstorecontainer.azurecr.io/book-store-frontend:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
