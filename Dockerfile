@@ -2,15 +2,15 @@
 FROM node:20-alpine AS builder
 
 ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
+# Do not set NODE_ENV to production in the builder so devDependencies (like prisma CLI) are installed for build-time tasks
 
 WORKDIR /app
 
 # Copy package files first
 COPY package*.json ./
 
-# Install dependencies with verbose output
-RUN npm ci --verbose
+# Install dependencies including devDependencies needed for build-time tools
+RUN npm ci --include=dev --verbose
 
 # Copy prisma schema
 COPY prisma ./prisma/
@@ -34,16 +34,6 @@ WORKDIR /app
 
 # Install dumb-init and curl for healthchecks
 RUN apk add --no-cache dumb-init curl
-
-# Set default environment variables (can be overridden at runtime)
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV DATABASE_URL=""
-ENV AUTH_USERNAME="admin"
-ENV AUTH_PASSWORD="admin"
-ENV AUTH_SECRET="change-me-in-production"
-ENV UPLOADTHING_TOKEN=""
-ENV NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
 # Copy built application from builder
 COPY --from=builder /app/.next/standalone ./
