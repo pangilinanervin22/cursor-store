@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 ARG NODE_ENV=production
 # Do not set NODE_ENV to production in the builder so devDependencies (like prisma CLI) are installed for build-time tasks
@@ -28,12 +28,14 @@ RUN npm run build
 RUN ls -la .next/ && if [ ! -d ".next/standalone" ]; then echo "ERROR: .next/standalone not created"; exit 1; fi
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
 # Install dumb-init and curl for healthchecks
-RUN apk add --no-cache dumb-init curl
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends dumb-init curl \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copy built application from builder
 COPY --from=builder /app/.next/standalone ./
